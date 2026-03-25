@@ -1,94 +1,81 @@
 import java.util.*;
 
-class Reservation {
-    private String reservationId;
-    private String guestName;
-    private String roomType;
-
-    public Reservation(String reservationId, String guestName, String roomType) {
-        this.reservationId = reservationId;
-        this.guestName = guestName;
-        this.roomType = roomType;
-    }
-
-    public String getReservationId() {
-        return reservationId;
-    }
-
-    public String getGuestName() {
-        return guestName;
-    }
-
-    public String getRoomType() {
-        return roomType;
-    }
-
-    @Override
-    public String toString() {
-        return reservationId + " | " + guestName + " | " + roomType;
+class InvalidBookingException extends Exception {
+    public InvalidBookingException(String message) {
+        super(message);
     }
 }
 
-class BookingHistory {
-    private List<Reservation> reservations;
+class BookingValidator {
 
-    public BookingHistory() {
-        reservations = new ArrayList<>();
-    }
+    private static final List<String> validRoomTypes =
+            Arrays.asList("Single", "Double", "Suite");
 
-    public void addReservation(Reservation reservation) {
-        reservations.add(reservation);
-    }
+    public static void validate(String reservationId, String guestName,
+                                String roomType, int available)
+            throws InvalidBookingException {
 
-    public List<Reservation> getAllReservations() {
-        return reservations;
-    }
-}
-
-class BookingReportService {
-
-    public void displayBookings(List<Reservation> reservations) {
-        if (reservations.isEmpty()) {
-            System.out.println("No bookings found.");
-            return;
+        if (reservationId == null || reservationId.isEmpty()) {
+            throw new InvalidBookingException("Reservation ID cannot be empty");
         }
 
-        System.out.println("\nBooking History:");
-        for (Reservation r : reservations) {
-            System.out.println(r);
-        }
-    }
-
-    public void showSummary(List<Reservation> reservations) {
-        System.out.println("\nBooking Summary:");
-        System.out.println("Total Bookings: " + reservations.size());
-
-        Map<String, Integer> count = new HashMap<>();
-
-        for (Reservation r : reservations) {
-            count.put(r.getRoomType(),
-                    count.getOrDefault(r.getRoomType(), 0) + 1);
+        if (guestName == null || guestName.isEmpty()) {
+            throw new InvalidBookingException("Guest name cannot be empty");
         }
 
-        for (String type : count.keySet()) {
-            System.out.println(type + ": " + count.get(type));
+        if (!validRoomTypes.contains(roomType)) {
+            throw new InvalidBookingException("Invalid room type");
+        }
+
+        if (available <= 0) {
+            throw new InvalidBookingException("No rooms available");
         }
     }
 }
 
-public class  BookMyStayApp {
+class BookingManager {
+
+    private Map<String, Integer> inventory;
+
+    public BookingManager() {
+        inventory = new HashMap<>();
+        inventory.put("Single", 2);
+        inventory.put("Double", 2);
+        inventory.put("Suite", 1);
+    }
+
+    public void bookRoom(String id, String name, String room)
+            throws InvalidBookingException {
+
+        int available = inventory.getOrDefault(room, 0);
+
+        BookingValidator.validate(id, name, room, available);
+
+        inventory.put(room, available - 1);
+
+        System.out.println("Booking successful!");
+        System.out.println(id + " | " + name + " | " + room);
+    }
+
+    public void displayInventory() {
+        System.out.println("\nCurrent Room Availability:");
+        for (String type : inventory.keySet()) {
+            System.out.println(type + ": " + inventory.get(type));
+        }
+    }
+}
+
+public class BookMyStayApp {
 
     public static void main(String[] args) {
 
         Scanner sc = new Scanner(System.in);
-        BookingHistory history = new BookingHistory();
-        BookingReportService report = new BookingReportService();
+        BookingManager manager = new BookingManager();
 
         while (true) {
-            System.out.println("\n1. Add Booking");
-            System.out.println("2. View Booking History");
-            System.out.println("3. View Summary Report");
-            System.out.println("4. Exit");
+            System.out.println("\n1. Book Room");
+            System.out.println("2. View Inventory");
+            System.out.println("3. Exit");
 
             System.out.print("Enter choice: ");
             int choice = sc.nextInt();
@@ -96,28 +83,28 @@ public class  BookMyStayApp {
 
             switch (choice) {
                 case 1:
-                    System.out.print("Enter Reservation ID: ");
-                    String id = sc.nextLine();
+                    try {
+                        System.out.print("Enter Reservation ID: ");
+                        String id = sc.nextLine();
 
-                    System.out.print("Enter Guest Name: ");
-                    String name = sc.nextLine();
+                        System.out.print("Enter Guest Name: ");
+                        String name = sc.nextLine();
 
-                    System.out.print("Enter Room Type (Single/Double/Suite): ");
-                    String room = sc.nextLine();
+                        System.out.print("Enter Room Type (Single/Double/Suite): ");
+                        String room = sc.nextLine();
 
-                    history.addReservation(new Reservation(id, name, room));
-                    System.out.println("Booking added successfully!");
+                        manager.bookRoom(id, name, room);
+
+                    } catch (InvalidBookingException e) {
+                        System.out.println("Error: " + e.getMessage());
+                    }
                     break;
 
                 case 2:
-                    report.displayBookings(history.getAllReservations());
+                    manager.displayInventory();
                     break;
 
                 case 3:
-                    report.showSummary(history.getAllReservations());
-                    break;
-
-                case 4:
                     sc.close();
                     return;
 
